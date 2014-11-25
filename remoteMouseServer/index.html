@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Remote Mouse</title>
+    <script src="Scripts/jquery-2.1.1.min.js"></script>
+    <script src="Scripts/jquery.signalR-2.1.2.min.js"></script>
+    <script src="Scripts/jquery-ui-1.11.2.min.js"></script>
+    <script src="Scripts/jquery.ui.touch-punch.min.js"></script>
+    <script src="Scripts/jquery.simple-color-picker.js"></script>
+    <link href="Content/jquery.simple-color-picker.css" rel="stylesheet" />
+    <script type="text/javascript">
+        $(function () {
+            window.messageColor = '#' + Math.random().toString(16).substr(-6);
+            window.corsorCenter = new Object();
+            window.corsorCenter.x = parseInt($("#corsor").css("left"));
+            window.corsorCenter.y = parseInt($("#corsor").css("top"));
+
+            $("#corsor").css("background-color", window.messageColor);
+
+            var dragInvoke = false;
+
+            $("#corsor").draggable({
+                revert: true,
+                drag: function () {
+                    if (!dragInvoke) {
+                        dragInvoke = false;
+                        hubProxy.invoke("Drag", {
+                            "x": parseInt($("#corsor").css("left")) - window.corsorCenter.x,
+                            "y": parseInt($("#corsor").css("top")) - window.corsorCenter.y,
+                            "color": window.messageColor
+                        }).done(function () {
+                            dragInvoke = true;
+                        });
+                    }
+                }
+            });
+
+            $('#colorPicker').simpleColorPicker({
+                showEffect: 'fade',
+                hideEffect: 'fade',
+                onChangeColor: function (color) {
+                    window.messageColor = color;
+                    $("#corsor").css("background-color", color);
+                    hubProxy.invoke("Drag", {
+                        "x": 0,
+                        "y": 0,
+                        "color": color
+                    });
+
+                }
+            })
+
+            var connection = $.hubConnection();
+            var hubProxy = connection.createHubProxy("remoteMouse");
+
+            connection.start(function () {
+                $("#send").prop("disabled", false);
+            });
+
+            $("#textForm").submit(function () {
+                var message = $("#message").val();
+                console.log(message);
+                hubProxy.invoke("Send", {
+                    "text": message,
+                    "color": window.messageColor
+                }).done(function () {
+                    $("#message").val("");
+                });
+                return false;
+            });
+        })
+    </script>
+    <style>
+        #corsor {
+            height: 200px;
+            width: 200px;
+            float: left;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            margin: -100px 0 0 -100px;
+            border: 1px solid black;
+        }
+
+        #forms {
+            position: absolute;
+            top: 0;
+        }
+
+        #message {
+            height: 40px;
+            width: 400px;
+            line-height: 40px;
+            font-size: 40px;
+        }
+
+        button {
+            font-size: 20px;
+        }
+
+        input {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div id="forms">
+        <form id="textForm">
+            <div>
+                <input type="text" id="message" />
+                <input type="submit" id="send" value="Submit" disabled="disabled" />
+                <button id="colorPicker">Select Color</button>
+            </div>
+        </form>
+    </div>
+    <div id="corsor"></div>
+</body>
+</html>
